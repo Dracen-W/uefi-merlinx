@@ -10,8 +10,8 @@
 #define MTK_KP_MEM1   0x0004
 #define MTK_KP_MEMS   5
 
-#define MTK_HW_KEY_VOLUME_UP    0
-#define MTK_HW_KEY_VOLUME_DOWN  17
+#define MTK_HW_KEY_VOLUME_DOWN  0
+#define MTK_HW_KEY_VOLUME_UP    17
 #define MTK_HW_KEY_POWER        8
 
 typedef struct {
