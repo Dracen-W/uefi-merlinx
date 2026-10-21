@@ -22,6 +22,7 @@ dtb            = "Resources/DTBs/merlinx.dtb"
 dtb_offset     = 0x0BC08000
 header_version = 2
 kernel_offset  = 0x00008000
+pagesize       = 2048
 ramdisk_offset = 0x07C08000
 second_offset  = 0xBFF88000
 tags_offset    = 0x0BC08000
