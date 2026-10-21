@@ -29,6 +29,9 @@
 !elseif $(SOC_TYPE) == 1
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemTableId|0x205439363736544D
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision|0x6769
+!elseif $(SOC_TYPE) == 2
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemTableId|0x205A39363736544D
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision|0x6769
 !endif
 
   #
@@ -52,6 +55,9 @@
 !elseif $(SOC_TYPE) == 1
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosProcessorModel|"MediaTek (TM) Helio G80 @ 2.00 GHz"
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"MT6769T"
+!elseif $(SOC_TYPE) == 2
+  gSiliciumPkgTokenSpaceGuid.PcdSmbiosProcessorModel|"MediaTek (TM) Helio G85 @ 2.00 GHz"
+  gSiliciumPkgTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"MT6769Z"
 !endif
 
 [LibraryClasses]
