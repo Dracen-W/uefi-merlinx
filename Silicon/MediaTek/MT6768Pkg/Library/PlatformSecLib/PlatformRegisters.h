@@ -12,6 +12,11 @@
 #define OVL_CONST_BLEND                BIT28
 
 //
+// WatchDog Timer Registers
+//
+#define WDT_BASE                       0x10007000
+
+//
 // WatchDog Timer Values
 //
 #define WDT_MODE_KEY                   0x22000000

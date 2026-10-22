@@ -12,17 +12,10 @@
 VOID
 DisableWatchDogTimer ()
 {
-  EFI_STATUS                   Status;
-  EFI_MEMORY_REGION_DESCRIPTOR WDogRegion;
-
-  // Locate "WatchDog Timer" Memory Region
-  Status = LocateMemoryRegionByName ("WatchDog Timer", &WDogRegion);
-  if (EFI_ERROR (Status)) {
-    return;
-  }
-
-  // Disable WatchDog Timer
-  MmioWrite32 (WDogRegion.Address, WDT_MODE_KEY);
+  // Disable the AP watchdog directly. The memory map lookup is not reliable
+  // this early in SEC, and the watchdog must be stopped before any code that
+  // can block for more than its timeout.
+  MmioWrite32 (WDT_BASE, WDT_MODE_KEY);
 }
 
 VOID
