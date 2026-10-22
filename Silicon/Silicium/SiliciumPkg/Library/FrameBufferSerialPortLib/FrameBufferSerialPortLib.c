@@ -278,7 +278,7 @@ LoadGeometry (
   CONST volatile FB_HANDOFF *Handoff;
 
   // Build-time Default
-  mFbGeometry.Base       = (UINTN)FbBase;
+  mFbGeometry.Base       = (UINTN)FbBase + FixedPcdGet32 (PcdFrameBufferXOffset) * FB_BPP;
   mFbGeometry.Width      = FixedPcdGet32 (PcdFrameBufferWidth);
   mFbGeometry.Height     = FixedPcdGet32 (PcdFrameBufferHeight);
   mFbGeometry.PitchBytes = mFbGeometry.Width * FB_BPP;

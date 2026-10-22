@@ -117,7 +117,7 @@ GetFrameBufferInfos (
   }
 
   // Pass Frame Buffer Address
-  *BaseAddress = FrameBufferRegion.Address;
+  *BaseAddress = FrameBufferRegion.Address + FixedPcdGet32 (PcdFrameBufferXOffset) * (*ColorDepth / 8);
 
   return EFI_SUCCESS;
 }
