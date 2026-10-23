@@ -5,14 +5,18 @@
 #include <Library/KeypadDeviceLib.h>
 #include <Library/DebugLib.h>
 #include <Library/IoLib.h>
+#include <Library/UefiBootServicesTableLib.h>
+
+#include <Protocol/MtkPmicWrapper.h>
 
 #define MTK_KP_BASE   0x10010000
 #define MTK_KP_MEM1   0x0004
 #define MTK_KP_MEMS   5
 
 #define MTK_HW_KEY_VOLUME_DOWN  0
-#define MTK_HW_KEY_VOLUME_UP    17
-#define MTK_HW_KEY_POWER        8
+
+#define MT6358_TOPSTATUS  0x28
+#define PMIC_KEYS_MASK    0x0A
 
 typedef struct {
   KEY_CONTEXT EfiKeyContext;
@@ -175,9 +179,8 @@ LibKeyUpdateKeyStatus (
 
 STATIC KEY_CONTEXT_PRIVATE KeyContextVolumeUp;
 STATIC KEY_CONTEXT_PRIVATE KeyContextVolumeDown;
-STATIC KEY_CONTEXT_PRIVATE KeyContextPower;
 
-STATIC KEY_CONTEXT_PRIVATE *KeyList[] = { &KeyContextVolumeUp, &KeyContextVolumeDown, &KeyContextPower };
+STATIC KEY_CONTEXT_PRIVATE *KeyList[] = { &KeyContextVolumeUp, &KeyContextVolumeDown };
 
 STATIC
 VOID
@@ -203,6 +206,35 @@ KeypadHwKeyPressed (
   return (State & (1U << (HwKeyCode % 16))) == 0;
 }
 
+STATIC MTK_PMIC_WRAPPER_PROTOCOL  *mPmicWrapper;
+STATIC BOOLEAN                    mPmicBaseValid;
+STATIC UINT16                     mPmicBase;
+
+STATIC
+BOOLEAN
+PmicHomeKeyPressed (
+  VOID
+  )
+{
+  UINT16 Value = 0;
+
+  if ((mPmicWrapper == NULL) &&
+      EFI_ERROR (gBS->LocateProtocol (&gMediaTekPmicWrapperProtocolGuid, NULL, (VOID **)&mPmicWrapper))) {
+    return FALSE;
+  }
+
+  mPmicWrapper->Read (MT6358_TOPSTATUS, &Value);
+  Value &= PMIC_KEYS_MASK;
+
+  if (!mPmicBaseValid) {
+    mPmicBase      = Value;
+    mPmicBaseValid = TRUE;
+    return FALSE;
+  }
+
+  return (Value ^ mPmicBase) != 0;
+}
+
 RETURN_STATUS
 EFIAPI
 KeypadDeviceConstructor ()
@@ -222,13 +254,11 @@ EFIAPI
 KeypadDeviceReset (KEYPAD_DEVICE_PROTOCOL *This)
 {
   LibKeyInitializeKeyContext(&KeyContextVolumeUp.EfiKeyContext);
-  KeyContextVolumeUp.EfiKeyContext.KeyData.Key.ScanCode   = SCAN_UP;
+  KeyContextVolumeUp.EfiKeyContext.KeyData.Key.ScanCode    = SCAN_NULL;
+  KeyContextVolumeUp.EfiKeyContext.KeyData.Key.UnicodeChar = CHAR_CARRIAGE_RETURN;
 
   LibKeyInitializeKeyContext(&KeyContextVolumeDown.EfiKeyContext);
-  KeyContextVolumeDown.EfiKeyContext.KeyData.Key.ScanCode = SCAN_DOWN;
-
-  LibKeyInitializeKeyContext(&KeyContextPower.EfiKeyContext);
-  KeyContextPower.EfiKeyContext.KeyData.Key.UnicodeChar   = CHAR_CARRIAGE_RETURN;
+  KeyContextVolumeDown.EfiKeyContext.KeyData.Key.ScanCode  = SCAN_DOWN;
 
   return EFI_SUCCESS;
 }
@@ -241,14 +271,11 @@ KeypadDeviceGetKeys (
 {
   BOOLEAN IsPressed;
 
-  IsPressed = KeypadHwKeyPressed (MTK_HW_KEY_VOLUME_UP);
+  IsPressed = PmicHomeKeyPressed ();
   LibKeyUpdateKeyStatus (&KeyContextVolumeUp.EfiKeyContext, KeypadReturnApi, IsPressed, Delta);
 
   IsPressed = KeypadHwKeyPressed (MTK_HW_KEY_VOLUME_DOWN);
   LibKeyUpdateKeyStatus (&KeyContextVolumeDown.EfiKeyContext, KeypadReturnApi, IsPressed, Delta);
-
-  IsPressed = KeypadHwKeyPressed (MTK_HW_KEY_POWER);
-  LibKeyUpdateKeyStatus (&KeyContextPower.EfiKeyContext, KeypadReturnApi, IsPressed, Delta);
 
   return EFI_SUCCESS;
 }

@@ -13,8 +13,13 @@
 [Packages]
   MdePkg/MdePkg.dec
   SiliciumPkg/SiliciumPkg.dec
+  MediaTekPkg/MediaTekPkg.dec
 
 [LibraryClasses]
   BaseMemoryLib
   DebugLib
   IoLib
+  UefiBootServicesTableLib
+
+[Protocols]
+  gMediaTekPmicWrapperProtocolGuid
