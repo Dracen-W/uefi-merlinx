@@ -168,6 +168,8 @@ InitGpio (
     mGpio->SetMode (130, 1); // DAT7
     mGpio->SetMode (122, 1); // CMD
     mGpio->SetMode (124, 1); // CLK
+    mGpio->SetMode (131, 1); // DS
+    mGpio->SetMode (133, 1); // RST
   }
   else {
     // Setup SDCard GPIO
