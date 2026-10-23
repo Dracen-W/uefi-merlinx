@@ -42,6 +42,40 @@
 #define FDT_HEADER_WINDOW_SIZE  (2 * SIZE_4KB)
 #define FDT_MAX_SIZE            (16 * SIZE_1MB)
 
+//
+// System RAM from the device's /proc/iomem, minus the firmware, FDT, initrd,
+// secure-world and framebuffer ranges. Keep this table in ascending order.
+//
+typedef struct {
+  UINT64       Base;
+  UINT64       Length;
+  CONST CHAR8  *Name;
+} AVAILABLE_MEMORY_RANGE;
+
+STATIC CONST AVAILABLE_MEMORY_RANGE  mAvailableMemory[] = {
+  { 0x043F80000, 0x003D00000, "low-before-initrd" },
+  { 0x047DCC000, 0x003EB4000, "low-after-initrd" },
+  { 0x04BCBE000, 0x001142000, "low-after-fdt" },
+  { 0x04CE60000, 0x0001A0000, "after-atf" },
+  { 0x04D100000, 0x01EF00000, "mid-4d" },
+  { 0x06C900000, 0x003700000, "mid-6c" },
+  { 0x077000000, 0x000FF0000, "mid-77" },
+  { 0x078000000, 0x002000000, "mid-78" },
+  { 0x07AC00000, 0x0021B0000, "mid-7a" },
+  { 0x07FE00000, 0x000100000, "mid-7fe" },
+  { 0x080000000, 0x00F000000, "high-80" },
+  { 0x08FD00000, 0x00F6F0000, "high-8fd" },
+  { 0x09FF00000, 0x0000F0000, "high-9ff" },
+  { 0x0A0000000, 0x00E000000, "high-a0" },
+  { 0x0BE300000, 0x000D00000, "high-be3" },
+  { 0x0BF400000, 0x000800000, "high-bf4" },
+  { 0x0BFC20000, 0x0001E0000, "high-bfc2" },
+  { 0x0BFE40000, 0x000130000, "high-bfe4" },
+  { 0x0BFFF0000, 0x000010000, "high-bfff" },
+  { 0x0C0000000, 0x03EFF6000, "high-c0" },
+  { 0x100000000, 0x01A000000, "high-4g" },
+};
+
 STATIC
 UINT64
 ReadCells (
@@ -169,6 +203,44 @@ MapReserved (
 
   DEBUG ((DEBUG_ERROR, "MERLINXMEM: %a 0x%lx-0x%lx mapped write-back\n", Name, Base, Limit - 1));
   return EFI_SUCCESS;
+}
+
+STATIC
+VOID
+AddAvailableMemory (
+  VOID
+  )
+{
+  EFI_STATUS  Status;
+  UINTN       Index;
+
+  for (Index = 0; Index < ARRAY_SIZE (mAvailableMemory); Index++) {
+    Status = gDS->AddMemorySpace (
+                    EfiGcdMemoryTypeSystemMemory,
+                    mAvailableMemory[Index].Base,
+                    mAvailableMemory[Index].Length,
+                    EFI_MEMORY_UC | EFI_MEMORY_WC | EFI_MEMORY_WT | EFI_MEMORY_WB
+                    );
+    if (!EFI_ERROR (Status)) {
+      Status = gDS->SetMemorySpaceAttributes (
+                      mAvailableMemory[Index].Base,
+                      mAvailableMemory[Index].Length,
+                      EFI_MEMORY_WB
+                      );
+      if (EFI_ERROR (Status)) {
+        gDS->RemoveMemorySpace (mAvailableMemory[Index].Base, mAvailableMemory[Index].Length);
+      }
+    }
+
+    DEBUG ((
+      DEBUG_ERROR,
+      "MERLINXMEM: RAM %a 0x%lx-0x%lx %r\n",
+      mAvailableMemory[Index].Name,
+      mAvailableMemory[Index].Base,
+      mAvailableMemory[Index].Base + mAvailableMemory[Index].Length - 1,
+      Status
+      ));
+  }
 }
 
 #pragma pack(1)
@@ -465,6 +537,8 @@ MerlinxBootMemoryDxeEntry (
 
   Status = PublishInitrd (Fdt);
   DEBUG ((DEBUG_ERROR, "MERLINXMEM: initrd publish %r\n", Status));
+
+  AddAvailableMemory ();
 
 #ifndef MDEPKG_NDEBUG
   //
