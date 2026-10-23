@@ -336,6 +336,41 @@ STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo = {
   RamBlockFlush
 };
 
+#ifndef MDEPKG_NDEBUG
+STATIC EFI_EVENT  mBlockIoProbeEvent;
+
+STATIC
+VOID
+EFIAPI
+ProbeBlockIo (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  EFI_STATUS            Status;
+  EFI_HANDLE            *Handles;
+  UINTN                 HandleCount;
+  UINTN                 Index;
+  EFI_BLOCK_IO_PROTOCOL *BlockIo;
+
+  Handles     = NULL;
+  HandleCount = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
+  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo handles %lu, %r\n", (UINT64)HandleCount, Status));
+  if (!EFI_ERROR (Status)) {
+    for (Index = 0; Index < HandleCount; Index++) {
+      if (!EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&BlockIo))) {
+        DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo %u LastBlock=0x%lx BlockSize=%u ReadOnly=%u\n",
+                (UINT32)Index, (UINT64)BlockIo->Media->LastBlock,
+                (UINT32)BlockIo->Media->BlockSize, BlockIo->Media->ReadOnly));
+      }
+    }
+    gBS->FreePool (Handles);
+  }
+  gBS->Stall (5 * 1000 * 1000);
+}
+#endif
+
 /**
   Map the device tree header, then map the rest of the tree from its totalsize.
 
@@ -541,6 +576,18 @@ MerlinxBootMemoryDxeEntry (
   AddAvailableMemory ();
 
 #ifndef MDEPKG_NDEBUG
+  Status = gBS->CreateEvent (
+                  EVT_TIMER,
+                  TPL_CALLBACK,
+                  ProbeBlockIo,
+                  NULL,
+                  &mBlockIoProbeEvent
+                  );
+  if (!EFI_ERROR (Status)) {
+    Status = gBS->SetTimer (mBlockIoProbeEvent, TimerRelative, 50 * 1000 * 1000);
+  }
+  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo probe timer %r\n", Status));
+
   //
   // The boot menu clears the panel later. Keep the memory summary visible in
   // debug images long enough to read it.
