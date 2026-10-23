@@ -17,7 +17,7 @@ append_dtb         = false
 #
 [boot_image]
 base           = 0x40078000
-cmdline        = "bootopt=64S3,32N2,64N2"
+cmdline        = "bootopt=64S3,32N2,64N2 androidboot.serialconsole=0"
 dtb            = "Resources/DTBs/merlinx.dtb"
 dtb_offset     = 0x0BC08000
 header_version = 2
