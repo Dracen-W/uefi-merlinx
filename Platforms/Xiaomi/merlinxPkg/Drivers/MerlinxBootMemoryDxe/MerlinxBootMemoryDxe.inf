@@ -30,6 +30,7 @@
 [Protocols]
   gEfiBlockIoProtocolGuid                       ## PRODUCES
   gEfiDevicePathProtocolGuid                    ## PRODUCES
+  gEfiCpuArchProtocolGuid                       ## CONSUMES
 
 [Depex]
-  TRUE
+  gEfiCpuArchProtocolGuid
