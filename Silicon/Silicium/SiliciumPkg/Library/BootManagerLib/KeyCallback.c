@@ -82,12 +82,12 @@ RegisterKeyNotify ()
   KeyData.KeyState.KeyToggleState = 0;
   KeyData.KeyState.KeyShiftState  = 0;
   KeyData.Key.UnicodeChar         = CHAR_NULL;
-  KeyData.Key.ScanCode            = SCAN_UP;
+  KeyData.Key.ScanCode            = SCAN_DOWN;
 
-  // Register Volume Up Key Notify
+  // Register Volume Down Key Notify
   Status = mSimpleInExProtocol->RegisterKeyNotify (mSimpleInExProtocol, &KeyData, &KeyNotify, &mNotifyHandle);
   if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "%a: Failed to Register Volume Up Key Notify! Status = %r\n", __FUNCTION__, Status));
+    DEBUG ((EFI_D_ERROR, "%a: Failed to Register Volume Down Key Notify! Status = %r\n", __FUNCTION__, Status));
     return Status;
   }
 
@@ -124,10 +124,10 @@ UnregisterKeyCallback ()
     return;
   }
 
-  // Unregister Volume Up Key Notify
+  // Unregister Volume Down Key Notify
   Status = mSimpleInExProtocol->UnregisterKeyNotify (mSimpleInExProtocol, mNotifyHandle);
   if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "%a: Failed to Unregister Volume Up Key Notify! Status = %r\n", __FUNCTION__, Status));
+    DEBUG ((EFI_D_ERROR, "%a: Failed to Unregister Volume Down Key Notify! Status = %r\n", __FUNCTION__, Status));
   }
 }
 
