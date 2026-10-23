@@ -26,6 +26,8 @@
   INF FatPkg/EnhancedFatDxe/Fat.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 
+  INF merlinxPkg/Drivers/MerlinxBootMemoryDxe/MerlinxBootMemoryDxe.inf
+
   INF MediaTekPkg/Drivers/GpioDxe/GpioDxe.inf
   INF MediaTekPkg/Drivers/ClockDxe/ClockDxe.inf
   INF MediaTekPkg/Drivers/PmicWrapperDxe/PmicWrapperDxe.inf

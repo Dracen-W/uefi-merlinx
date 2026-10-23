@@ -87,6 +87,11 @@
 
 [Components]
   #
+  # Memory
+  #
+  merlinxPkg/Drivers/MerlinxBootMemoryDxe/MerlinxBootMemoryDxe.inf
+
+  #
   # Input
   #
   SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
