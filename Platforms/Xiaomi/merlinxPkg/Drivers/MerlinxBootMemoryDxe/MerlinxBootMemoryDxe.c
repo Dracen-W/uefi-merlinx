@@ -338,6 +338,8 @@ STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo = {
 
 #ifndef MDEPKG_NDEBUG
 STATIC EFI_EVENT  mBlockIoProbeEvent;
+STATIC VOID       *mBlockIoProbeRegistration;
+STATIC BOOLEAN    mBlockIoProbeDone;
 
 STATIC
 VOID
@@ -353,6 +355,10 @@ ProbeBlockIo (
   UINTN                 Index;
   EFI_BLOCK_IO_PROTOCOL *BlockIo;
 
+  if (mBlockIoProbeDone) {
+    return;
+  }
+
   Handles     = NULL;
   HandleCount = 0;
   Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
@@ -367,7 +373,11 @@ ProbeBlockIo (
     }
     gBS->FreePool (Handles);
   }
-  gBS->Stall (5 * 1000 * 1000);
+
+  if (HandleCount > 0) {
+    mBlockIoProbeDone = TRUE;
+    gBS->Stall (5 * 1000 * 1000);
+  }
 }
 #endif
 
@@ -576,17 +586,24 @@ MerlinxBootMemoryDxeEntry (
   AddAvailableMemory ();
 
 #ifndef MDEPKG_NDEBUG
-  Status = gBS->CreateEvent (
-                  EVT_TIMER,
-                  TPL_CALLBACK,
-                  ProbeBlockIo,
-                  NULL,
-                  &mBlockIoProbeEvent
-                  );
-  if (!EFI_ERROR (Status)) {
-    Status = gBS->SetTimer (mBlockIoProbeEvent, TimerRelative, 50 * 1000 * 1000);
+  ProbeBlockIo (NULL, NULL);
+  if (!mBlockIoProbeDone) {
+    Status = gBS->CreateEvent (
+                    EVT_NOTIFY_SIGNAL,
+                    TPL_CALLBACK,
+                    ProbeBlockIo,
+                    NULL,
+                    &mBlockIoProbeEvent
+                    );
+    if (!EFI_ERROR (Status)) {
+      Status = gBS->RegisterProtocolNotify (
+                      &gEfiBlockIoProtocolGuid,
+                      mBlockIoProbeEvent,
+                      &mBlockIoProbeRegistration
+                      );
+    }
+    DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo notify %r\n", Status));
   }
-  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo probe timer %r\n", Status));
 
   //
   // The boot menu clears the panel later. Keep the memory summary visible in
