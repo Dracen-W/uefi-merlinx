@@ -390,10 +390,21 @@ ProbeBlockIo (
         DEBUG ((DEBUG_ERROR, "MERLINXMEM: SdMmcPassThru %u host=%u slot=%u %r\n",
                 (UINT32)PassThruIndex, (VendorPath != NULL) ? (UINT32)VendorPath->Guid.Data4[7] : 0xFF,
                 Slot, Status));
+        Status = gBS->ConnectController (PassThruHandles[PassThruIndex], NULL, NULL, TRUE);
+        DEBUG ((DEBUG_ERROR, "MERLINXMEM: SdMmcPassThru %u connect %r\n", (UINT32)PassThruIndex, Status));
       }
     }
     gBS->FreePool (PassThruHandles);
   }
+
+  if (!EFI_ERROR (BlockIoStatus)) {
+    gBS->FreePool (Handles);
+  }
+
+  Handles       = NULL;
+  HandleCount   = 0;
+  BlockIoStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
+  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo after connect %lu, %r\n", (UINT64)HandleCount, BlockIoStatus));
 
   if (!EFI_ERROR (BlockIoStatus)) {
     for (Index = 0; Index < HandleCount; Index++) {
