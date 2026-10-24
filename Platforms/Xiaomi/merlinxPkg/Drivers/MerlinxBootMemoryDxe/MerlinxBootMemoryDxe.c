@@ -26,6 +26,7 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/DevicePath.h>
+#include <Protocol/SdMmcPassThru.h>
 
 //
 // The media the FAT driver sees. An eMMC sector is 512 bytes, and the
@@ -350,10 +351,16 @@ ProbeBlockIo (
   )
 {
   EFI_STATUS            Status;
+  EFI_STATUS            BlockIoStatus;
   EFI_HANDLE            *Handles;
   UINTN                 HandleCount;
   UINTN                 Index;
   EFI_BLOCK_IO_PROTOCOL *BlockIo;
+  EFI_SD_MMC_PASS_THRU_PROTOCOL *PassThru;
+  EFI_HANDLE            *PassThruHandles;
+  UINTN                 PassThruCount;
+  UINTN                 PassThruIndex;
+  UINT8                 Slot;
 
   if (mBlockIoProbeDone) {
     return;
@@ -361,9 +368,24 @@ ProbeBlockIo (
 
   Handles     = NULL;
   HandleCount = 0;
-  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
-  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo handles %lu, %r\n", (UINT64)HandleCount, Status));
+  BlockIoStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
+  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo handles %lu, %r\n", (UINT64)HandleCount, BlockIoStatus));
+  PassThruHandles = NULL;
+  PassThruCount   = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiSdMmcPassThruProtocolGuid, NULL, &PassThruCount, &PassThruHandles);
+  DEBUG ((DEBUG_ERROR, "MERLINXMEM: SdMmcPassThru handles %lu, %r\n", (UINT64)PassThruCount, Status));
   if (!EFI_ERROR (Status)) {
+    for (PassThruIndex = 0; PassThruIndex < PassThruCount; PassThruIndex++) {
+      if (!EFI_ERROR (gBS->HandleProtocol (PassThruHandles[PassThruIndex], &gEfiSdMmcPassThruProtocolGuid, (VOID **)&PassThru))) {
+        Slot = 0xFF;
+        Status = PassThru->GetNextSlot (PassThru, &Slot);
+        DEBUG ((DEBUG_ERROR, "MERLINXMEM: SdMmcPassThru %u slot=%u %r\n", (UINT32)PassThruIndex, Slot, Status));
+      }
+    }
+    gBS->FreePool (PassThruHandles);
+  }
+
+  if (!EFI_ERROR (BlockIoStatus)) {
     for (Index = 0; Index < HandleCount; Index++) {
       if (!EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&BlockIo))) {
         DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo %u LastBlock=0x%lx BlockSize=%u ReadOnly=%u\n",

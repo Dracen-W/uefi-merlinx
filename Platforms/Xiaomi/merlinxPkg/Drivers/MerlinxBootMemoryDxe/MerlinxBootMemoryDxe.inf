@@ -29,6 +29,7 @@
 
 [Protocols]
   gEfiBlockIoProtocolGuid                       ## PRODUCES
+  gEfiSdMmcPassThruProtocolGuid                 ## CONSUMES
   gEfiDevicePathProtocolGuid                    ## PRODUCES
   gEfiCpuArchProtocolGuid                       ## CONSUMES
 
