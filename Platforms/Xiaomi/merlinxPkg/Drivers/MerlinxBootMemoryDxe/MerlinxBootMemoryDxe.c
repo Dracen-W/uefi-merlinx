@@ -357,6 +357,8 @@ ProbeBlockIo (
   UINTN                 Index;
   EFI_BLOCK_IO_PROTOCOL *BlockIo;
   EFI_SD_MMC_PASS_THRU_PROTOCOL *PassThru;
+  EFI_DEVICE_PATH_PROTOCOL *PassThruPath;
+  VENDOR_DEVICE_PATH    *VendorPath;
   EFI_HANDLE            *PassThruHandles;
   UINTN                 PassThruCount;
   UINTN                 PassThruIndex;
@@ -377,9 +379,17 @@ ProbeBlockIo (
   if (!EFI_ERROR (Status)) {
     for (PassThruIndex = 0; PassThruIndex < PassThruCount; PassThruIndex++) {
       if (!EFI_ERROR (gBS->HandleProtocol (PassThruHandles[PassThruIndex], &gEfiSdMmcPassThruProtocolGuid, (VOID **)&PassThru))) {
+        PassThruPath = NULL;
+        VendorPath   = NULL;
+        if (!EFI_ERROR (gBS->HandleProtocol (PassThruHandles[PassThruIndex], &gEfiDevicePathProtocolGuid, (VOID **)&PassThruPath)) &&
+            (PassThruPath != NULL) && (PassThruPath->Type == HARDWARE_DEVICE_PATH) && (PassThruPath->SubType == HW_VENDOR_DP)) {
+          VendorPath = (VENDOR_DEVICE_PATH *)PassThruPath;
+        }
         Slot = 0xFF;
         Status = PassThru->GetNextSlot (PassThru, &Slot);
-        DEBUG ((DEBUG_ERROR, "MERLINXMEM: SdMmcPassThru %u slot=%u %r\n", (UINT32)PassThruIndex, Slot, Status));
+        DEBUG ((DEBUG_ERROR, "MERLINXMEM: SdMmcPassThru %u host=%u slot=%u %r\n",
+                (UINT32)PassThruIndex, (VendorPath != NULL) ? (UINT32)VendorPath->Guid.Data4[7] : 0xFF,
+                Slot, Status));
       }
     }
     gBS->FreePool (PassThruHandles);
