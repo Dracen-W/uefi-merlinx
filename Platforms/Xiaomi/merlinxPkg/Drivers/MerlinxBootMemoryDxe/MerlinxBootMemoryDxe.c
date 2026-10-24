@@ -351,10 +351,10 @@ ProbeBlockIo (
   )
 {
   EFI_STATUS            Status;
-  EFI_STATUS            BlockIoStatus;
   EFI_HANDLE            *Handles;
   UINTN                 HandleCount;
   UINTN                 Index;
+  UINTN                 WritableCount;
   EFI_BLOCK_IO_PROTOCOL *BlockIo;
   EFI_SD_MMC_PASS_THRU_PROTOCOL *PassThru;
   EFI_DEVICE_PATH_PROTOCOL *PassThruPath;
@@ -363,15 +363,13 @@ ProbeBlockIo (
   UINTN                 PassThruCount;
   UINTN                 PassThruIndex;
   UINT8                 Slot;
+  UINT64                MaxLastBlock;
+  UINT64                MaxWritable;
 
   if (mBlockIoProbeDone) {
     return;
   }
 
-  Handles     = NULL;
-  HandleCount = 0;
-  BlockIoStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
-  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo handles %lu, %r\n", (UINT64)HandleCount, BlockIoStatus));
   PassThruHandles = NULL;
   PassThruCount   = 0;
   Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiSdMmcPassThruProtocolGuid, NULL, &PassThruCount, &PassThruHandles);
@@ -397,25 +395,31 @@ ProbeBlockIo (
     gBS->FreePool (PassThruHandles);
   }
 
-  if (!EFI_ERROR (BlockIoStatus)) {
-    gBS->FreePool (Handles);
-  }
-
   Handles       = NULL;
   HandleCount   = 0;
-  BlockIoStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
-  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo after connect %lu, %r\n", (UINT64)HandleCount, BlockIoStatus));
-
-  if (!EFI_ERROR (BlockIoStatus)) {
+  WritableCount = 0;
+  MaxLastBlock  = 0;
+  MaxWritable   = 0;
+  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &HandleCount, &Handles);
+  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo after connect %lu, %r\n", (UINT64)HandleCount, Status));
+  if (!EFI_ERROR (Status)) {
     for (Index = 0; Index < HandleCount; Index++) {
       if (!EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&BlockIo))) {
-        DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo %u LastBlock=0x%lx BlockSize=%u ReadOnly=%u\n",
-                (UINT32)Index, (UINT64)BlockIo->Media->LastBlock,
-                (UINT32)BlockIo->Media->BlockSize, BlockIo->Media->ReadOnly));
+        if ((UINT64)BlockIo->Media->LastBlock > MaxLastBlock) {
+          MaxLastBlock = (UINT64)BlockIo->Media->LastBlock;
+        }
+        if (!BlockIo->Media->ReadOnly) {
+          WritableCount++;
+          if ((UINT64)BlockIo->Media->LastBlock > MaxWritable) {
+            MaxWritable = (UINT64)BlockIo->Media->LastBlock;
+          }
+        }
       }
     }
     gBS->FreePool (Handles);
   }
+  DEBUG ((DEBUG_ERROR, "MERLINXMEM: BlockIo summary count=%lu max=0x%lx writable=%lu maxWritable=0x%lx\n",
+          (UINT64)HandleCount, MaxLastBlock, (UINT64)WritableCount, MaxWritable));
 
   if (HandleCount > 0) {
     mBlockIoProbeDone = TRUE;
