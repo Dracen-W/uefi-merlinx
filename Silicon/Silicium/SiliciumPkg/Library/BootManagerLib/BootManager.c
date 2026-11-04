@@ -32,7 +32,7 @@ STATIC UINTN YPos = 0;
 //
 // BDS Combo Message
 //
-STATIC CONST CHAR8 *ComboMessage = "[Volume Down] Boot Manager";
+STATIC CONST CHAR8 *ComboMessage = "[Volume Up] Boot Manager";
 
 VOID
 EFIAPI

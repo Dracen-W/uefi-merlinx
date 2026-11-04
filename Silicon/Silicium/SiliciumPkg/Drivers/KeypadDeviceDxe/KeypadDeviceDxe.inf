@@ -12,7 +12,6 @@
 [Packages]
   MdePkg/MdePkg.dec
   SiliciumPkg/SiliciumPkg.dec
-  MediaTekPkg/MediaTekPkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
@@ -23,7 +22,6 @@
 [Protocols]
   gKeypadDeviceProtocolGuid
   gEfiDevicePathProtocolGuid
-  gMediaTekPmicWrapperProtocolGuid
 
 [Depex]
   TRUE
