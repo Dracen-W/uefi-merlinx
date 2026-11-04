@@ -5,14 +5,28 @@
 #include <Library/KeypadDeviceLib.h>
 #include <Library/DebugLib.h>
 #include <Library/IoLib.h>
+#include <Library/UefiBootServicesTableLib.h>
+
+#include <Protocol/MtkPmic.h>
 
 #define MTK_KP_BASE   0x10010000
 #define MTK_KP_MEM1   0x0004
 #define MTK_KP_MEMS   5
 
+//
+// Only Volume Down sits in the keypad matrix: the board's kpd node has a
+// single hw-init-map entry, index 0 = KEY_VOLUMEDOWN.
+//
+// Volume Up ("rstkey", hw index 17) and Power ("pwrkey", hw index 8) are the
+// MT6358 PMIC HOMEKEY and PWRKEY pins. 17 and 8 are only labels used by the
+// bootloader's download-key combo, they are not KP_MEM bit positions, so
+// reading them from KP_MEM never sees a press. They are read through the
+// MT6358 PMIC protocol instead (TOPSTATUS: PWRKEY = BIT1, HOMEKEY = BIT3,
+// active low), which MT6358PmicDxe already implements.
+//
 #define MTK_HW_KEY_VOLUME_DOWN  0
-#define MTK_HW_KEY_VOLUME_UP    17
-#define MTK_HW_KEY_POWER        8
+
+STATIC MTK_PMIC_PROTOCOL *mPmicProtocol = NULL;
 
 typedef struct {
   KEY_CONTEXT EfiKeyContext;
@@ -187,6 +201,22 @@ KeypadInitializeKeyContextPrivate (KEY_CONTEXT_PRIVATE *Context)
 }
 
 STATIC
+VOID
+KeypadLocatePmic (VOID)
+{
+  EFI_STATUS Status;
+
+  if (mPmicProtocol != NULL) {
+    return;
+  }
+
+  Status = gBS->LocateProtocol (&gMediaTekPmicProtocolGuid, NULL, (VOID **)&mPmicProtocol);
+  if (EFI_ERROR (Status)) {
+    mPmicProtocol = NULL;
+  }
+}
+
+STATIC
 BOOLEAN
 KeypadHwKeyPressed (
   UINTN  HwKeyCode
@@ -212,6 +242,14 @@ KeypadDeviceConstructor ()
   // Reset all keys
   for (Index = 0; Index < (sizeof(KeyList) / sizeof(KeyList[0])); Index++) {
     KeypadInitializeKeyContextPrivate(KeyList[Index]);
+  }
+
+  // PMIC protocol is installed by MT6358PmicDxe, which is ordered before this
+  // driver in APRIORI. Do not fail the constructor if it is missing: Volume
+  // Down still works, and GetKeys retries the lookup on every poll.
+  KeypadLocatePmic ();
+  if (mPmicProtocol == NULL) {
+    DEBUG ((EFI_D_WARN, "%a: PMIC protocol not available yet, Volume Up/Power disabled for now\n", __FUNCTION__));
   }
 
   return RETURN_SUCCESS;
@@ -241,13 +279,24 @@ KeypadDeviceGetKeys (
 {
   BOOLEAN IsPressed;
 
-  IsPressed = KeypadHwKeyPressed (MTK_HW_KEY_VOLUME_UP);
+  KeypadLocatePmic ();
+
+  // Volume Up: MT6358 HOMEKEY
+  IsPressed = FALSE;
+  if (mPmicProtocol != NULL) {
+    mPmicProtocol->HomeButtonPressed (&IsPressed);
+  }
   LibKeyUpdateKeyStatus (&KeyContextVolumeUp.EfiKeyContext, KeypadReturnApi, IsPressed, Delta);
 
+  // Volume Down: keypad matrix
   IsPressed = KeypadHwKeyPressed (MTK_HW_KEY_VOLUME_DOWN);
   LibKeyUpdateKeyStatus (&KeyContextVolumeDown.EfiKeyContext, KeypadReturnApi, IsPressed, Delta);
 
-  IsPressed = KeypadHwKeyPressed (MTK_HW_KEY_POWER);
+  // Power: MT6358 PWRKEY
+  IsPressed = FALSE;
+  if (mPmicProtocol != NULL) {
+    mPmicProtocol->PowerButtonPressed (&IsPressed);
+  }
   LibKeyUpdateKeyStatus (&KeyContextPower.EfiKeyContext, KeypadReturnApi, IsPressed, Delta);
 
   return EFI_SUCCESS;
